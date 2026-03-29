@@ -1,0 +1,82 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+    
+    function isAdmin() {
+      return isAuthenticated() && 
+        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
+         request.auth.token.email == "officialwinverse@gmail.com" ||
+         request.auth.token.email == "rampatel88390153@gmail.com");
+    }
+
+    function isPositive(field) {
+      return request.resource.data[field] is number && request.resource.data[field] >= 0;
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+
+    match /users/{userId} {
+      allow read: if isOwner(userId) || isAdmin();
+      // Users can only create their own profile, admins can create any
+      allow create: if (isOwner(userId) && request.resource.data.role == 'user') || isAdmin();
+      // Users can update their own profile (name, image), but not role or balance
+      allow update: if isAdmin() || (isOwner(userId) && 
+        request.resource.data.role == resource.data.role &&
+        request.resource.data.balance == resource.data.balance &&
+        request.resource.data.referral_earnings == resource.data.referral_earnings &&
+        request.resource.data.total_bets == resource.data.total_bets &&
+        request.resource.data.total_deposits == resource.data.total_deposits);
+    }
+
+    match /bets/{betId} {
+      // Users can read their own bets, admins can read all
+      allow read: if (isAuthenticated() && resource.data.user_id == request.auth.uid) || isAdmin();
+      // Users can create bets if they are authenticated and the user_id matches their uid
+      allow create: if isAuthenticated() && 
+        request.resource.data.user_id == request.auth.uid &&
+        request.resource.data.amount >= 20 && 
+        request.resource.data.amount <= 50000 &&
+        request.resource.data.status == 'pending';
+      // Only admins (or backend) can update bets (to set win/lose)
+      allow update: if isAdmin();
+    }
+
+    match /rounds/{roundId} {
+      // Anyone can read past rounds
+      allow read: if true;
+      // Only backend/admin can create/update rounds
+      allow write: if isAdmin();
+    }
+
+    match /transactions/{transactionId} {
+      // Users can read their own transactions, admins can read all
+      allow read: if (isAuthenticated() && resource.data.user_id == request.auth.uid) || isAdmin();
+      // Users can create deposit/withdraw requests
+      allow create: if isAuthenticated() && 
+        request.resource.data.user_id == request.auth.uid &&
+        request.resource.data.status == 'pending' &&
+        request.resource.data.amount > 0;
+      // Only admins can update transactions (approve/reject)
+      allow update: if isAdmin();
+    }
+
+    match /system/game_state {
+      // Anyone can read the live game state
+      allow read: if true;
+      // Only backend/admin can update the game state
+      allow write: if isAdmin();
+    }
+  }
+}

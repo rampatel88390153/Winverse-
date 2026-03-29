@@ -1,0 +1,96 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile and wallet data",
+      "type": "object",
+      "properties": {
+        "email": { "type": "string", "format": "email" },
+        "balance": { "type": "number", "description": "Current wallet balance" },
+        "referral_code": { "type": "string" },
+        "referred_by": { "type": "string", "description": "UID of the referrer" },
+        "referral_earnings": { "type": "number" },
+        "total_bets": { "type": "number" },
+        "profile_image": { "type": "string" },
+        "role": { "type": "string", "enum": ["user", "admin"] },
+        "name": { "type": "string" },
+        "total_deposits": { "type": "number" }
+      },
+      "required": ["email", "balance", "role"]
+    },
+    "Bet": {
+      "title": "Bet",
+      "description": "A user's bet on a specific round",
+      "type": "object",
+      "properties": {
+        "user_id": { "type": "string" },
+        "round_id": { "type": "string" },
+        "option": { "type": "string", "enum": ["Red", "Green", "Blue", "Big", "Small"] },
+        "amount": { "type": "number" },
+        "status": { "type": "string", "enum": ["pending", "win", "lose"] },
+        "timestamp": { "type": "number" }
+      },
+      "required": ["user_id", "round_id", "option", "amount", "status", "timestamp"]
+    },
+    "Round": {
+      "title": "Round",
+      "description": "A betting round history",
+      "type": "object",
+      "properties": {
+        "round_id": { "type": "string" },
+        "result": { "type": "string" },
+        "timestamp": { "type": "number" }
+      },
+      "required": ["round_id", "result", "timestamp"]
+    },
+    "Transaction": {
+      "title": "Transaction",
+      "description": "Deposit or withdrawal request",
+      "type": "object",
+      "properties": {
+        "user_id": { "type": "string" },
+        "type": { "type": "string", "enum": ["deposit", "withdraw", "bonus", "referral"] },
+        "amount": { "type": "number" },
+        "utr": { "type": "string" },
+        "status": { "type": "string", "enum": ["pending", "approved", "rejected"] },
+        "timestamp": { "type": "number" }
+      },
+      "required": ["user_id", "type", "amount", "status", "timestamp"]
+    },
+    "GameState": {
+      "title": "GameState",
+      "description": "Current live game state",
+      "type": "object",
+      "properties": {
+        "current_round_id": { "type": "string" },
+        "timer": { "type": "number" },
+        "status": { "type": "string", "enum": ["betting", "locked", "calculating"] },
+        "mode": { "type": "string", "enum": ["random", "manual", "lowest_bet"] },
+        "manual_result": { "type": "string" }
+      },
+      "required": ["current_round_id", "timer", "status", "mode"]
+    }
+  },
+  "firestore": {
+    "users/{userId}": {
+      "schema": "User",
+      "description": "User accounts"
+    },
+    "bets/{betId}": {
+      "schema": "Bet",
+      "description": "All bets placed"
+    },
+    "rounds/{roundId}": {
+      "schema": "Round",
+      "description": "History of completed rounds"
+    },
+    "transactions/{transactionId}": {
+      "schema": "Transaction",
+      "description": "Financial transactions"
+    },
+    "system/game_state": {
+      "schema": "GameState",
+      "description": "Singleton document for live game state"
+    }
+  }
+}
